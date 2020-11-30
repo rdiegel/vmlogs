@@ -55,7 +55,7 @@ namespace VmLogsFunction
                 return new OkObjectResult(responseMessage);
             } catch (Exception ex)
             {
-                log.LogError(ex, "Error during function run");
+                log.LogError(ex, ex.Message);
                 return new BadRequestResult();
             }
         }

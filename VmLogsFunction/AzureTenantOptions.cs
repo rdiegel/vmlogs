@@ -11,5 +11,7 @@ namespace VmLogsFunction
         public string Key { get; set; }
 
         public string Tenant { get; set; }
+
+        public string SubscriptionId { get; set; }
     }
 }

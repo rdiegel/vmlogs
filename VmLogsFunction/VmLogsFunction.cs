@@ -11,6 +11,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 
 namespace VmLogsFunction
 {
@@ -28,24 +29,33 @@ namespace VmLogsFunction
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("Hallo");
+            try
+            {
+                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                dynamic data = JsonConvert.DeserializeObject(requestBody);
+                string targetVmName = data?.vmName;
 
-            var creds = new AzureCredentialsFactory()
-                  .FromServicePrincipal(_options.Client, _options.Key, _options.Tenant, AzureEnvironment.AzureGlobalCloud);
+                var credentials = new AzureCredentialsFactory()
+                      .FromServicePrincipal(_options.Client, _options.Key, _options.Tenant, AzureEnvironment.AzureGlobalCloud);
 
-            var azure = Azure.Authenticate(creds);
+                var azure = Azure
+                        .Configure()
+                        .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
+                        .Authenticate(credentials)
+                        .WithSubscription(_options.SubscriptionId);
 
-            string name = req.Query["name"];
+                var targetVm = azure.VirtualMachines.GetByResourceGroup("myRessourceGroup", targetVmName);
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+                string responseMessage = targetVm == null
+                    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
+                    : $"Hello, the VM {targetVmName} is ready. ID: {targetVm.Id}";
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+                return new OkObjectResult(responseMessage);
+            } catch (Exception ex)
+            {
+                log.LogError(ex, "Error during function run");
+                return new BadRequestResult();
+            }
         }
     }
 }

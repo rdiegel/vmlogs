@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using VmLogsFunction.JSON;
 
 namespace VmLogsFunction
 {
@@ -32,8 +33,7 @@ namespace VmLogsFunction
             try
             {
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-                dynamic data = JsonConvert.DeserializeObject(requestBody);
-                string targetVmName = data?.vmName;
+                var requestObject = JsonConvert.DeserializeObject<VmLogsRequestBody>(requestBody);
 
                 var credentials = new AzureCredentialsFactory()
                       .FromServicePrincipal(_options.Client, _options.Key, _options.Tenant, AzureEnvironment.AzureGlobalCloud);
@@ -44,11 +44,13 @@ namespace VmLogsFunction
                         .Authenticate(credentials)
                         .WithSubscription(_options.SubscriptionId);
 
-                var targetVm = azure.VirtualMachines.GetByResourceGroup("myRessourceGroup", targetVmName);
+                var targetVm = azure.VirtualMachines.GetByResourceGroup(requestObject.ResourceGroup, requestObject.TargetVmName);
+
+                var outputObject = new VmLogsOutputBody(requestObject, targetVm.Tags);
 
                 string responseMessage = targetVm == null
-                    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                    : $"Hello, the VM {targetVmName} is ready. ID: {targetVm.Id}";
+                    ? "No VM name provided. Please add to according JSON property to request body."
+                    : JsonConvert.SerializeObject(outputObject);
 
                 return new OkObjectResult(responseMessage);
             } catch (Exception ex)

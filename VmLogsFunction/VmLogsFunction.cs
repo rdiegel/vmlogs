@@ -49,8 +49,8 @@ namespace VmLogsFunction
                 var outputObject = new VmLogsOutputBody(requestObject, targetVm.Tags);
 
                 string responseMessage = targetVm == null
-                    ? "No VM name provided. Please add to according JSON property to request body."
-                    : JsonConvert.SerializeObject(outputObject);
+                    ? "No VM found for request."
+                    : outputObject.GetJsonString();
 
                 return new OkObjectResult(responseMessage);
             } catch (Exception ex)

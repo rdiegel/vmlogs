@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Dynamic;
 
 namespace VmLogsFunction.JSON
 {
@@ -8,9 +10,24 @@ namespace VmLogsFunction.JSON
         {
             this.ResourceGroup = requestObject.ResourceGroup;
             this.TargetVmName = requestObject.TargetVmName;
-            this.VmTags = string.Join(", ", tags);
+            this.Tags = tags;
         }
 
-        public string VmTags { get; set; }
+        public IReadOnlyDictionary<string, string> Tags;
+
+        public string GetJsonString()
+        {
+            JObject jsonObject = new JObject();
+
+            jsonObject.Add("ReourceGroup", this.ResourceGroup);
+            jsonObject.Add("VmName", this.TargetVmName);
+
+            foreach (var kvp in this.Tags)
+            {
+                jsonObject.Add(kvp.Key, kvp.Value);
+            }
+
+            return jsonObject.ToString();
+        }
     }
 }

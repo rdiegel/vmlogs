@@ -13,5 +13,9 @@ namespace VmLogsFunction
         public string Tenant { get; set; }
 
         public string SubscriptionId { get; set; }
+
+        public string EventGridTopicEndpointUrl { get; set; }
+
+        public string EventGridTopicKey { get; set; }
     }
 }

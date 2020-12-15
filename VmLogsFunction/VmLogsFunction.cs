@@ -1,17 +1,20 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.EventGrid;
+using Microsoft.Azure.EventGrid.Models;
+using Microsoft.Azure.Management.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using VmLogsFunction.JSON;
 
 namespace VmLogsFunction
@@ -27,7 +30,7 @@ namespace VmLogsFunction
 
         [FunctionName("VmLogsFunction")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
             try
@@ -52,12 +55,37 @@ namespace VmLogsFunction
                     ? "No VM found for request."
                     : outputObject.GetJsonString();
 
+                await PushToEventGrid(outputObject);
+
                 return new OkObjectResult(responseMessage);
             } catch (Exception ex)
             {
                 log.LogError(ex, ex.Message);
                 return new BadRequestResult();
             }
+        }
+
+        private async Task PushToEventGrid(VmLogsOutputBody vmObject)
+        {
+            string topicHostname = new Uri(_options.EventGridTopicEndpointUrl).Host;
+
+            TopicCredentials topicCredentials = new TopicCredentials(_options.EventGridTopicKey);
+            EventGridClient client = new EventGridClient(topicCredentials);
+
+            var myEvents = new List<EventGridEvent>()
+            {
+                new EventGridEvent()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    EventType = "vmAlertEvent",
+                    Data = vmObject.Tags,
+                    EventTime = DateTime.Now,
+                    Subject = vmObject.TargetVmName,
+                    DataVersion = "1.0"
+                }
+            };
+
+            client.PublishEventsAsync(topicHostname, myEvents).GetAwaiter().GetResult();
         }
     }
 }

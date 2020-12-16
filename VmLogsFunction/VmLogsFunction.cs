@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Web.Http;
 using VmLogsFunction.JSON;
 
 namespace VmLogsFunction
@@ -61,7 +62,7 @@ namespace VmLogsFunction
             } catch (Exception ex)
             {
                 log.LogError(ex, ex.Message);
-                return new BadRequestResult();
+                return new BadRequestErrorMessageResult(ex.Message);
             }
         }
 

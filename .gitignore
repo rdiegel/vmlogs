@@ -348,3 +348,4 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/VmLogsFunction/Properties/ServiceDependencies/monitoringpocrdiegel - Zip Deploy/profile.arm.json
